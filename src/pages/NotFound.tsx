@@ -1,5 +1,3 @@
-import React from "react";
-
 const NotFound = () => {
   return (
     <main className="grid h-[100vh] place-items-center bg-[#111828] px-6 py-24 sm:py-32 lg:px-8">
