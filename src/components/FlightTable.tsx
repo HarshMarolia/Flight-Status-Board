@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Flight } from "../types";
+import { fetchFlights } from "../api";
+import { dateFormatter } from "../utility";
 
 const FlightTable: React.FC = () => {
   const navigate = useNavigate();
@@ -13,25 +14,26 @@ const FlightTable: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const refetchTime = 20000;
 
-  const fetchFlights = async () => {
+  const handleFetchFlights = async () => {
     try {
       setLoading(true);
-      const response = await axios.get<Flight[]>(
-        "https://flight-status-mock.core.travelopia.cloud/flights"
+      setError(null); // Clear previous errors
+      const data = await fetchFlights();
+      setFlights(data);
+      setLastUpdated(new Date());
+    } catch (err: any) {
+      setError(
+        err.message || "An unexpected error occurred. Please try again."
       );
-      setFlights(response.data);
-      setLastUpdated(new Date()); // Update the timestamp when data is fetched
-    } catch (err) {
-      setError("Failed to fetch flight data. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchFlights();
-    const intervalId = setInterval(fetchFlights, refetchTime);
-    return () => clearInterval(intervalId); // Cleanup on unmount
+    handleFetchFlights();
+    const intervalId = setInterval(handleFetchFlights, refetchTime);
+    return () => clearInterval(intervalId);
   }, []);
 
   // Calculate pagination details
@@ -48,27 +50,26 @@ const FlightTable: React.FC = () => {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     setRowsPerPage(Number(event.target.value));
-    setCurrentPage(1); // Reset to first page when rows per page change
-  };
-
-  const dateFormatter = (date: string) => {
-    const dateObj = new Date(date);
-    return dateObj.toLocaleTimeString();
+    setCurrentPage(1);
   };
 
   const handleRowClick = (flightId: string) => {
     navigate(`/flight/${flightId}`);
   };
 
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
-  }
-
   return (
-    <div className="relative isolate overflow-hidden bg-gray-900 p-6 shadow-2xl sm:rounded-3xl sm:p-16" id="flight-table">
+    <div
+      className="relative isolate overflow-hidden bg-gray-900 p-6 shadow-2xl sm:rounded-3xl sm:p-16"
+      id="flight-table"
+    >
+      {error && (
+        <div className="text-red-500 text-center text-lg mb-4">{error}</div>
+      )}
       <div className="mb-4 flex justify-between items-center">
         <div className="text-white text-lg font-semibold flex gap-4 items-center justify-center">
-          <h2 className="text-xl font-semibold">Real-Time Flight Status Board</h2>
+          <h2 className="text-xl font-semibold">
+            Real-Time Flight Status Board
+          </h2>
           {/* Last Updated Timestamp */}
           <div className="text-sm text-gray-400 text-center">
             {lastUpdated
@@ -76,7 +77,7 @@ const FlightTable: React.FC = () => {
               : ""}
           </div>
           <button
-            onClick={fetchFlights}
+            onClick={handleFetchFlights}
             className={`p-1 rounded-full hover:bg-gray-700 transition ease-in-out duration-150 ${
               loading ? "animate-spin" : ""
             }`}
@@ -124,34 +125,48 @@ const FlightTable: React.FC = () => {
           </tr>
         </thead>
         <tbody className="text-sm divide-y divide-gray-700">
-          {currentRows.map((flight) => (
-            <tr
-              key={flight.id}
-              className="hover:bg-gray-700 transition ease-in-out duration-150 cursor-pointer"
-              onClick={() => handleRowClick(flight.id)}
-            >
-              <td className="py-4 px-4">{flight.flightNumber}</td>
-              <td className="py-4 px-4">{flight.airline}</td>
-              <td className="py-4 px-4">{flight.origin}</td>
-              <td className="py-4 px-4">{flight.destination}</td>
-              <td className="py-4 px-4">
-                {dateFormatter(flight.departureTime)}
-              </td>
-              <td className="py-4 px-4">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    flight.status === "On Time"
-                      ? "bg-green-500 text-white"
-                      : flight.status === "Delayed"
-                      ? "bg-yellow-500 text-white"
-                      : "bg-red-500 text-white"
-                  }`}
-                >
-                  {flight.status}
-                </span>
+          {error ? (
+            <tr>
+              <td colSpan={6} className="py-4 px-4 text-center text-gray-400">
+                No data to display
               </td>
             </tr>
-          ))}
+          ) : currentRows.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="py-4 px-4 text-center text-gray-400">
+                No data to display
+              </td>
+            </tr>
+          ) : (
+            currentRows.map((flight) => (
+              <tr
+                key={flight.id}
+                className="hover:bg-gray-700 transition ease-in-out duration-150 cursor-pointer"
+                onClick={() => handleRowClick(flight.id)}
+              >
+                <td className="py-4 px-4">{flight.flightNumber}</td>
+                <td className="py-4 px-4">{flight.airline}</td>
+                <td className="py-4 px-4">{flight.origin}</td>
+                <td className="py-4 px-4">{flight.destination}</td>
+                <td className="py-4 px-4">
+                  {dateFormatter(flight.departureTime)}
+                </td>
+                <td className="py-4 px-4">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      flight.status === "On Time"
+                        ? "bg-green-500 text-white"
+                        : flight.status === "Delayed"
+                        ? "bg-yellow-500 text-white"
+                        : "bg-red-500 text-white"
+                    }`}
+                  >
+                    {flight.status}
+                  </span>
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
 
@@ -169,7 +184,7 @@ const FlightTable: React.FC = () => {
             stroke="white"
             className="h-5 w-5"
           >
-            <path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256 246.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z" />
+            <path d="M12.7 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L57.8 256 256.6 57.3c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z" />
           </svg>
         </button>
         <span className="text-white">
