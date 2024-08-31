@@ -1,6 +1,6 @@
 # Realtime Flight Status Board
 
-A modern web application that displays real-time flight statuses. Built with React, Tailwind CSS, and tested with Jest.
+A modern web application that displays real-time flight statuses. Built with React, Tailwind CSS, and tested with Jest. [Live demo](https://elegant-daifuku-d3f4f9.netlify.app/)
 
 ## Table of Contents
 
